@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: jobscout
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/jobscout?schema=public
+      - NODE_ENV=production
+    env_file:
+      - .env
+    networks:
+      - jobscout-network
+
+  db:
+    image: postgres:16-alpine
+    container_name: jobscout-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=jobscout
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - jobscout-network
+
+  migrate:
+    build: .
+    container_name: jobscout-migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/jobscout?schema=public
+    command: npx prisma migrate deploy
+    networks:
+      - jobscout-network
+
+volumes:
+  postgres-data:
+
+networks:
+  jobscout-network:
+    driver: bridge

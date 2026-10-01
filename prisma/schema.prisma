@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Job {
+  id          String   @id @default(cuid())
+  source      String
+  externalId  String?
+  url         String
+  urlHash     String
+  title       String
+  company     String
+  location    String?
+  description String?
+  salary      String?
+  postedAt    DateTime?
+  rawContent  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  analysis     JobAnalysis?
+  notifications Notification[]
+
+  @@unique([source, externalId])
+  @@index([urlHash])
+  @@index([createdAt])
+}
+
+model JobAnalysis {
+  id                String   @id @default(cuid())
+  jobId             String   @unique
+  job               Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  status            String   @default("pending")
+  
+  seniorityLevel    String?
+  requiredSkills    String[]
+  techStack         String[]
+  remoteType        String?
+  locationRestrictions String[]
+  experienceYears   Int?
+  
+  isMatch           Boolean  @default(false)
+  matchScore        Float?
+  matchReasons      String[]
+  rejectReasons     String[]
+  
+  rawResponse       String?
+  errorMessage      String?
+  retryCount        Int      @default(0)
+  
+  analyzedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status])
+  @@index([isMatch])
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  jobId       String
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  channel     String
+  messageId   String?
+  status      String   @default("pending")
+  sentAt      DateTime?
+  errorMessage String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([channel])
+}
+
+model ProcessedEmail {
+  id          String   @id @default(cuid())
+  messageId   String   @unique
+  threadId    String?
+  subject     String?
+  receivedAt  DateTime?
+  processedAt DateTime @default(now())
+  jobsFound   Int      @default(0)
+  
+  @@index([processedAt])
+}
